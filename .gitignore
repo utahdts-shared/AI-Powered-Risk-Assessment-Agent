@@ -125,3 +125,10 @@ secrets.json
 
 # Streamlit specific
 .streamlit/secrets.toml
+# Local working materials and secrets
+migration_enhancements/
+security_scan_findings/
+
+# Claude Code instructions
+CLAUDE.md
+**/CLAUDE.md
