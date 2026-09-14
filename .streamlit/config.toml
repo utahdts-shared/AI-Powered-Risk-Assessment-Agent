@@ -1,0 +1,7 @@
+# Server limits for the GenAI Risk Assessment app.
+#
+# maxUploadSize is a coarse backstop. It must stay above the per-PDF allowance
+# in the front end, or valid uploads break. Matrix upload limits are applied in
+# back_end/matrix_loader.py.
+[server]
+maxUploadSize = 15

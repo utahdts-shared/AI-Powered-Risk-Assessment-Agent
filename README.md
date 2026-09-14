@@ -2,6 +2,8 @@
 
 A Streamlit-based application that uses Google's Gemini AI to perform comprehensive risk assessments for generative AI projects.
 
+> **This is a quickstart, not a production system.** It is a starting point for building agent workflows that perform analysis. This repository performs minimal threat scanning and has no authentication; run it locally rather than exposing it.
+
 ## Overview
 
 This application helps evaluate potential risks in GenAI projects by analyzing project details, documentation, and relevant URLs. It provides detailed risk assessments across multiple risk categories, with reasoning and potential mitigations for each identified risk.
@@ -14,42 +16,43 @@ The application consists of three main components:
 
 1. **Streamlit Front End** (`front_end/streamlit_front_end.py`)
    - Provides the user interface for data input and results display
-   - Orchestrates the overall assessment process
+   - Collects the inputs and displays progress as the assessment runs
    - Manages application state and user session
 
 2. **Authentication Module** (`back_end/gemini_authentication.py`)
    - Handles Gemini API key validation and client initialization
-   - Manages secure connection to Google's Generative AI services
+   - Lists the models available to that key for the sidebar picker
 
-3. **AI Agents** (`back_end/gemini_agents.py`)
-   - Implements specialized AI agents for different aspects of risk assessment
-   - Processes PDFs and URLs to extract relevant information
-   - Analyzes risk categories based on project details and reference materials
+3. **AI Agent Graph** (`back_end/adk/`)
+   - A Google ADK 2.0 workflow that orchestrates the whole assessment
+   - `agent.py` holds the agent itself: schemas, prompts, model config and the graph
+   - `evidence.py` reads URLs and PDFs, `ratelimit.py` paces free-tier requests,
+     `runner.py` bridges the graph to Streamlit
 
-### Agent System
+### AI Agent System
 
-The application uses a multi-agent approach, with specialized agents working together:
+The AI agent graph runs in two phases, so no category agent ever re-reads the raw documents:
 
-1. **URL Agent**
-   - Analyzes web content from provided URLs
-   - Extracts information relevant to risk assessment
-   - Formats findings for the Compiling Agent
+1. **Evidence Extraction**
+   - Reads each supplied URL, and accepts it only if the API confirms the page was actually retrieved
+   - Extracts text from each uploaded PDF locally, flagging scanned files that yield none
+   - Folds everything into a single evidence brief
 
 2. **Risk Assessment Agent**
-   - Evaluates specific risk categories (e.g., Privacy, Ethics, Security)
-   - Determines appropriate risk levels based on project details
+   - Evaluates each risk category from the matrix (e.g. Model Training, Decision Making)
+   - Determines the risk level from the category's own level descriptions
    - Provides reasoning and suggested mitigations
-   - Returns structured assessment for each category
+   - Returns a structured result whose risk level is constrained to that matrix's levels
 
-3. **Compiling Agent**
-   - Synthesizes information from multiple sources
-   - Combines PDF analysis and URL research
-   - Provides comprehensive risk insights
+   There is one agent, called once per category. It reads which category it is
+   rating from session state, so the graph is the same shape for a three-row
+   matrix or a fifty-row one.
 
-4. **PDF Processing**
-   - Handles PDF document uploads
-   - Converts PDFs to a format that Gemini can analyze
-   - Extracts relevant content for risk assessment
+3. **Report Generation** (`back_end/report.py`)
+   - Validates each risk level against the matrix and sanitizes the model's free text
+   - Builds the downloadable Excel report
+
+See [agent_architecture.md](agent_architecture.md) for a diagram of the run.
 
 ### Risk Analysis Process
 
@@ -60,8 +63,8 @@ When a risk analysis is initiated:
    - User selects or uploads a risk matrix that defines risk categories and levels
 
 2. **Document Processing**
-   - PDFs are processed and converted to a format that Gemini can analyze
-   - URLs are validated and prepared for analysis
+   - PDFs are read for text and URLs are fetched, once each
+   - Sources that could not be read are reported rather than silently skipped
 
 3. **Risk Assessment**
    - The system analyzes each risk category from the risk matrix
@@ -77,21 +80,27 @@ When a risk analysis is initiated:
 
 ## Requirements
 
-- A valid Google Gemini API key
-- Python 3.7+
-- Required packages: streamlit, google-generativeai, pandas, and others
+- A valid Google Gemini API key (the free tier is sufficient)
+- Python 3.11+
+- Required packages: `google-adk`, `google-genai`, `streamlit`, `pandas`, `openpyxl`, `pypdf`
+
+### About your API key
+
+Google has retired the older standard `AIza…` API keys; as of September 2026 the Gemini API rejects them. Create a key at [Google AI Studio](https://aistudio.google.com/apikey) — new keys are issued in the supported format automatically.
+
+Free-tier quotas are per model and tighter than they look: `gemini-3.8-flash` allows about 20 requests per **day**, and one assessment costs roughly one call per risk category. Stick with a **lite** model such as the default `gemini-3.5-flash-lite` unless you have a paid key.
 
 ## Getting Started
 
 1. Clone the repository
 2. Install dependencies with `pip install -r requirements.txt`
-3. Run the application with `streamlit run streamlit_front_end.py`
+3. Run the application with `streamlit run front_end/streamlit_front_end.py`
 4. Enter your Gemini API key and follow the instructions in the UI
 
 ## Risk Matrix
 
 The application uses a risk matrix to define:
-- Risk categories to evaluate (e.g., Data Privacy, Bias, Security)
+- Risk categories to evaluate (e.g., Model Training, Model Retention, Decision Making)
 - Risk levels and their descriptions (e.g., Low, Medium, High)
 
-Users can use the default risk matrix or upload a custom one.
+Users can use the default risk matrix or upload a custom one. A custom matrix must use the same column layout: first column the risk type, second the risk description, and the third onward the risk levels from lowest to highest.

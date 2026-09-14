@@ -1,9 +1,10 @@
-# Requirements for GenAI Risk Assessment Streamlit App
-streamlit>=1.28.0
-google-generativeai>=0.7.0
-pandas>=2.0.0
-numpy>=1.24.0
-openpyxl>=3.1.0
-PyPDF2>=3.0.0
-xlrd>=2.0.0
-python-docx>=0.8.11
+# Requirements for the GenAI Risk Assessment app.
+#
+# Only packages actually imported by front_end/ or back_end/ are listed.
+# Upper bounds are deliberate: google-genai has shipped breaking major versions.
+google-adk>=2.9,<3
+google-genai>=2.23,<3
+pypdf>=6.0,<7
+streamlit>=1.48,<2
+pandas>=2.2,<3
+openpyxl>=3.1,<4
